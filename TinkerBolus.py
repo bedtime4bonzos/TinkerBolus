@@ -85,12 +85,8 @@ class BGInteractor:
             self.client = MongoClient(self.uri, server_api=ServerApi('1'))
         
         # Send a ping to confirm a successful connection
-        try:
-            self.client.admin.command('ping')
-            print("Successful connection to MongoDB!")
-        except Exception as e:
-            print(e)
-            
+        self.client.admin.command('ping')
+        print("Successful connection to MongoDB!")
     
     def get_data_from_mongodb(self):
 
