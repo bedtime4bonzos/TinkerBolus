@@ -88,10 +88,7 @@ class BGInteractor:
         try:
             self.client.admin.command('ping')
             print("Successful connection to MongoDB!")
-            return
         except Exception as e:
-            print("Error: Connection to MongoDB Failed")
-            self.ax.set_title('Connection to MongoDB Failed')                            
             print(e)
             
     
@@ -196,10 +193,29 @@ class BGInteractor:
     def load(self,*args):  
           self.accumulated_insulin = 0
           self.ax.clear()
-          self.disconnect_handlers()          
-          self.connect_to_mongodb()
-          self.get_data_from_mongodb()
-          self.display_data()
+          self.disconnect_handlers() 
+          
+          try:
+              self.connect_to_mongodb()
+          except Exception as e:
+              self.ax.set_title('Connection to MongoDB Failed')   
+              print('Error: Connection to MongoDB Failed')
+              print(e)                                     
+              return               
+          try:    
+              self.get_data_from_mongodb()
+          except Exception as e:
+              self.ax.set_title('Connected to MongoDB, but failed to retrieve data')   
+              print('Connected to MongoDB, but failed to retrieve data')
+              print(e)                                     
+              return 
+          try:    
+              self.display_data()
+          except Exception as e:
+              self.ax.set_title('Connected to MongoDB, but failed to display data')   
+              print('Connected to MongoDB, but failed to display data')
+              print(e)                                     
+              return                  
           self.connect_handlers()
         
     def calculate_insulin_counteraction(self):
