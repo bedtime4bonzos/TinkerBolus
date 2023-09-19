@@ -95,7 +95,7 @@ class BGInteractor:
         treatments_col = db.treatments
         
         timeStart = datetime.datetime.fromisoformat(self.date + 'T' + self.time) - datetime.timedelta(hours=(self.utcoffset))        
-        timeStop = timeStart + datetime.timedelta(minutes=self.timespan_minutes)                
+        timeStop = timeStart + datetime.timedelta(minutes=self.timespan_minutes)
                 
         myBGs = entries_col.find({
             "$and": [
@@ -179,40 +179,46 @@ class BGInteractor:
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         self.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.canvas.mpl_connect('axes_leave_event',self.on_leave_axes)
 
     def disconnect_handlers(self):
         self.canvas.mpl_disconnect('button_press_event')
         self.canvas.mpl_disconnect('button_release_event')
         self.canvas.mpl_disconnect('motion_notify_event')
         self.canvas.mpl_disconnect('key_press_event')    
+        self.canvas.mpl_disconnect('axes_leave_event')
           
     def load(self,*args):  
-          self.accumulated_insulin = 0
-          self.ax.clear()
-          self.disconnect_handlers() 
-          
-          try:
-              self.connect_to_mongodb()
-          except Exception as e:
-              self.ax.set_title('Connection to MongoDB Failed')   
-              print('Error: Connection to MongoDB Failed')
-              print(e)                                     
-              return               
-          try:    
-              self.get_data_from_mongodb()
-          except Exception as e:
-              self.ax.set_title('Connected to MongoDB, but failed to retrieve data')   
-              print('Connected to MongoDB, but failed to retrieve data')
-              print(e)                                     
-              return 
-          try:    
-              self.display_data()
-          except Exception as e:
-              self.ax.set_title('Connected to MongoDB, but failed to display data')   
-              print('Connected to MongoDB, but failed to display data')
-              print(e)                                     
-              return                  
-          self.connect_handlers()
+        if self.timespan_minutes > self.timespanmax_minutes:
+            self.timespan_text_box.set_val(str(self.timespanmax_minutes/60))
+            
+        self.accumulated_insulin = 0
+        self.ax.clear()
+        
+        self.disconnect_handlers() 
+        
+        try:
+            self.connect_to_mongodb()
+        except Exception as e:
+            self.ax.set_title('Connection to MongoDB Failed')   
+            print('Error: Connection to MongoDB Failed')
+            print(e)                                     
+            return               
+        try:    
+            self.get_data_from_mongodb()
+        except Exception as e:
+            self.ax.set_title('Connected to MongoDB, but failed to retrieve data')   
+            print('Connected to MongoDB, but failed to retrieve data')
+            print(e)                                     
+            return 
+        try:    
+            self.display_data()
+        except Exception as e:
+            self.ax.set_title('Connected to MongoDB, but failed to display data')   
+            print('Connected to MongoDB, but failed to display data')
+            print(e)                                     
+            return                  
+        self.connect_handlers()
         
     def calculate_insulin_counteraction(self):
         # determine initial insulin-only BG curve        
@@ -224,6 +230,8 @@ class BGInteractor:
         self.y_BG_no_insulin = self.y_BG - self.y_BG_insulin_only;        
                 
     def validate_bolus_textbox_string(self, *args):
+        # self.bolus_text_box.submit()
+        self.bolus_text_box
         expression = self.bolus_text_box.text
         if expression == '':
             self.bolus_text_box.set_val(str(self.addbolus))
@@ -248,25 +256,20 @@ class BGInteractor:
         except:
             self.isf_text_box.set_val(str(self.isf))
             return(str(self.isf))        
-        
+
     def validate_timespan_textbox_string(self, *args):
         expression = self.timespan_text_box.text
         if expression == '':
-            self.timespan_text_box.set_val(str(self.timespan_minutes))
+            self.timespan_text_box.set_val(str(self.timespan_minutes/60))
             return(str(self.timespan_minutes/60))   
         try:
-            timespan_test_value = float(expression)
-            if timespan_test_value > self.timespanmax_minutes/60:
-                timespan_test_value = self.timespanmax_minutes/60        
-            timespan_test_string = (str(timespan_test_value))
-            self.timespan_text_box.set_val(timespan_test_string)  
-            self.timespan_minutes = timespan_test_value*60            
-            
-            return(str(self.timespan_minutes))
+            self.timespan_text_box.set_val(str(float(expression)))  
+            self.timespan_minutes = float(expression)*60
+            return(str(self.timespan_minutes/60))
         except:
-            self.timespan_text_box.set_val(str(self.timespan_minutes))
-            return(str(self.timespan_minutes/60))            
-
+            self.timespan_text_box.set_val(str(self.timespan_minutes/60))
+            return(str(self.timespan_minutes/60))   
+        
     def validate_date_textbox_string(self, *args):
         expression = self.date_text_box.text
         if expression == '':
@@ -309,7 +312,16 @@ class BGInteractor:
         except:
             self.utcoffset_text_box.set_val(str(self.utcoffset))
             return(str(self.utcoffset))    
-
+    
+    def on_leave_axes(self,event):
+        # this is a bit brute force, but will work for now.  on_submit isn't getting updated upon mouse leaving textbox
+        self.validate_bolus_textbox_string()
+        self.validate_date_textbox_string()
+        self.validate_isf_textbox_string()
+        self.validate_time_textbox_string()
+        self.validate_timespan_textbox_string()
+        self.validate_utcoffset_textbox_string()        
+    
     def scalable_exp_iob(self,t, tp, td):
         if t < 0:     # equation isn't valid outside of range [0,td]
             return 1
