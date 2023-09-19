@@ -21,7 +21,8 @@ class BGInteractor:
     timespanmax_minutes = 60*48
     utcoffset = -6 # mdt is -6
     isf = 176
-    addbolus = 0.2    
+    addbolus = 0.2  
+    accumulated_insulin = 0.0
     
     def __init__(self,uri,minBolus_to_load):
         self.minBolus_to_load = minBolus_to_load  
@@ -306,17 +307,17 @@ class BGInteractor:
         
         # prevent boluses and carbs from leaving the plot
         y_min, y_max = self.ax.get_ylim()  
-        edge_delta = (y_max-y_min)*.02
-        y_min = y_min + edge_delta
-        y_max = y_max - edge_delta
+        edge_delta = (y_max-y_min)*.04
+        y_min_with_delta = y_min + edge_delta
+        y_max_with_delta = y_max - edge_delta
                 
         y_BG_temp = np.array([float(x) for x in self.y_BG])
         
         self.y_bolus = self.y_offset + np.interp(self.x_bolus,self.x_BG,y_BG_temp)
-        self.y_bolus[self.y_bolus<y_min] = y_min
-        self.y_bolus[self.y_bolus>y_max] = y_max
-        self.y_carb[self.y_carb<y_min] = y_min
-        self.y_carb[self.y_carb>y_max] = y_max                
+        self.y_bolus[self.y_bolus<y_min] = y_min_with_delta
+        self.y_bolus[self.y_bolus>y_max] = y_max_with_delta
+        self.y_carb[self.y_carb<y_min] = y_min_with_delta
+        self.y_carb[self.y_carb>y_max] = y_max_with_delta                
             
         self.y_carb = -self.y_offset + np.interp(self.x_carb,self.x_BG,y_BG_temp)        
         self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
@@ -391,7 +392,8 @@ class BGInteractor:
             self.x_bolus = np.delete(self.x_bolus, ind)
             self.y_bolus = np.delete(self.y_bolus, ind)
             self.z_bolus = np.delete(self.z_bolus, ind)
-        self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
+        # self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
+        self.redraw_bolus()
         self.redraw_BG()                
         self.move_y_bolus_and_carb_to_y_BG()    
         
@@ -400,10 +402,20 @@ class BGInteractor:
         self.x_bolus = np.append(self.x_bolus,event.xdata)
         self.y_bolus = np.append(self.y_bolus,0)
         self.z_bolus = np.append(self.z_bolus,float(expression))
-        self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])    
+        # self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])    
+        self.redraw_bolus()
         self.redraw_BG() 
         self.move_y_bolus_and_carb_to_y_BG()                        
-        self.fig.canvas.draw_idle()         
+        self.fig.canvas.draw_idle()   
+        self.accumulated_insulin = 0
+        
+    def accumulate_insulin_for_bolus(self,event):
+        ind = self.get_ind_under_point(event)
+        if ind is not None:                
+            self.accumulated_insulin += self.z_bolus[ind]
+        self.delete_insulin(event)
+        self.bolus_text_box.set_val(str(round(self.accumulated_insulin,2)))
+        self.addbolus = float(self.accumulated_insulin);
         
     def on_key_press(self, event):
         """Callback for key presses."""
@@ -413,13 +425,19 @@ class BGInteractor:
             self.delete_insulin(event)                
         elif event.key == 'i':
             self.insert_insulin(event)
+        elif event.key == 'a':
+            self.accumulate_insulin_for_bolus(event)            
                                                
-    def redraw_BG(self):
-        
+    def redraw_BG(self):        
         self.set_y_BG_insulin_only()  # set the new insulin BG curves
         self.y_BG = self.y_BG_no_insulin + self.y_BG_insulin_only
         self.sc_BG.set_offsets(np.c_[self.x_BG,self.y_BG])
         self.fig.canvas.draw_idle()
+        
+    def redraw_bolus(self):     # need this instead of set_offsets for the z_bolus sizing to update correctly   
+        self.sc_bolus.remove()
+        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.z_bolus*150, alpha = 0.8, color = 'green', zorder=.4)
+        self.fig.canvas.draw_idle()        
          
 
 # main stuff here
@@ -427,7 +445,7 @@ if __name__ == '__main__':
 
     # set uri to read-only test database
     mongodb_uri = "mongodb+srv://test_pymongo_user:dwmgIlvrLC9mYIEu@cluster0.dbhmgel.mongodb.net"    
-    minBolus_to_load = 0.15  # Threshold to prevent autoboluses from cluttering things up
+    minBolus_to_load = 0.0  # Threshold to prevent autoboluses from cluttering things up (although it's more fun with this set to 0)
     bgi = BGInteractor(mongodb_uri,minBolus_to_load)
 
 
