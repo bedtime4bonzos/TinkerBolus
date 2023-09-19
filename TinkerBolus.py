@@ -88,8 +88,12 @@ class BGInteractor:
         try:
             self.client.admin.command('ping')
             print("Successful connection to MongoDB!")
+            return
         except Exception as e:
+            print("Error: Connection to MongoDB Failed")
+            self.ax.set_title('Connection to MongoDB Failed')                            
             print(e)
+            
     
     def get_data_from_mongodb(self):
 
