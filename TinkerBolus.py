@@ -7,6 +7,7 @@ import datetime
 from matplotlib.widgets import Button, TextBox
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
+import certifi
 
 #%matplotlib auto
 
@@ -22,7 +23,7 @@ class BGInteractor:
     utcoffset = -6 # mdt is -6
     isf = 176
     addbolus = 0.2  
-    accumulated_insulin = 0.0
+    accumulated_insulin = 0.0  # total of insulin accumulated with 'a'
     
     def __init__(self,uri,minBolus_to_load):
         self.minBolus_to_load = minBolus_to_load  
@@ -66,7 +67,7 @@ class BGInteractor:
         self.bload.on_clicked(self.load)
 
         self.axbolus_txt_box = self.fig.add_axes([0.861, 0.07, 0.08, 0.04])
-        self.bolus_text_box = TextBox(self.axbolus_txt_box, 'Bolus to  \ninsert (U) ', textalignment="left")
+        self.bolus_text_box = TextBox(self.axbolus_txt_box, 'Bolus to  \nInsert (U) ', textalignment="left")
         self.bolus_text_box.on_submit(self.validate_bolus_textbox_string)
         self.bolus_text_box.set_val(str(self.addbolus))                        
         
@@ -77,7 +78,12 @@ class BGInteractor:
         
     def connect_to_mongodb(self):
         # Create a new client and connect to the server
-        self.client = MongoClient(self.uri, server_api=ServerApi('1'))
+        try:
+            ca = certifi.where()
+            self.client = MongoClient(self.uri, server_api=ServerApi('1'),tlsCAFile=ca)
+        except:
+            self.client = MongoClient(self.uri, server_api=ServerApi('1'))
+        
         # Send a ping to confirm a successful connection
         try:
             self.client.admin.command('ping')
@@ -161,7 +167,7 @@ class BGInteractor:
         
         self.ax.set_xlabel('Time (minutes)')
         self.ax.set_ylabel('BG (mg/dL)')
-        self.ax.set_title("TinkerBolus\nDrag, Delete (press 'd'), or Insert (press 'i') Insulin Entries")
+        self.ax.set_title("TinkerBolus\nDrag, Delete (press 'd'), Accumulate ('a'), or Insert ('i') Insulin Entries")
         
         self.ax.grid(True)
         
@@ -184,6 +190,7 @@ class BGInteractor:
         self.canvas.mpl_disconnect('key_press_event')    
           
     def load(self,*args):  
+          self.accumulated_insulin = 0
           self.ax.clear()
           self.disconnect_handlers()          
           self.connect_to_mongodb()
@@ -203,6 +210,7 @@ class BGInteractor:
     def validate_bolus_textbox_string(self, *args):
         expression = self.bolus_text_box.text
         if expression == '':
+            self.bolus_text_box.set_val(str(self.addbolus))
             return(str(self.addbolus))
         try:
             self.bolus_text_box.set_val(str(float(expression)))
