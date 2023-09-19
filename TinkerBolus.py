@@ -5,11 +5,13 @@ import pprint
 
 import datetime
 from matplotlib.widgets import Button, TextBox
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 #%matplotlib auto
 
 class BGInteractor:
-    epsilon = 5  # max pixel distance to count as a vertex hit
+    epsilon = 20  # max pixel distance to count as a vertex hit
     y_offset = 4 # display distance from BG for carbs and insulin (should use display coords instead)
     td = float(360) # duration
     tp = float(75) # activity peak
@@ -24,7 +26,6 @@ class BGInteractor:
     def __init__(self,uri,minBolus_to_load):
         self.minBolus_to_load = minBolus_to_load  
         self.uri = uri
-
         
         self.fig, self.ax = plt.subplots(figsize=(9,6))
         self.fig.subplots_adjust(bottom=0.2)        
@@ -74,8 +75,6 @@ class BGInteractor:
         self.load() # Load with defaults       
         
     def connect_to_mongodb(self):
-        from pymongo.mongo_client import MongoClient
-        from pymongo.server_api import ServerApi
         # Create a new client and connect to the server
         self.client = MongoClient(self.uri, server_api=ServerApi('1'))
         # Send a ping to confirm a successful connection
@@ -151,10 +150,10 @@ class BGInteractor:
         
     def display_data(self):                
 
-        self.ax.plot(self.x_BG,self.y_BG,color="grey")                
-        self.sc_BG = self.ax.scatter(self.x_BG,self.y_BG)#,color="blue")
-        self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb)
-        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus)
+        self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)                
+        self.sc_BG = self.ax.scatter(self.x_BG,self.y_BG,alpha = 0.75,color="blue", zorder=.2)
+        self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb,self.z_carb*150/20, alpha = 0.8, color='orange', zorder=.3)
+        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.z_bolus*150, alpha = 0.8, color = 'green', zorder=.4)
         
         self.my_carb_annotations=[]
         self.my_bolus_annotations=[]        
@@ -192,12 +191,12 @@ class BGInteractor:
           self.connect_handlers()
         
     def calculate_insulin_counteraction(self):
-        # # determine initial insulin-only BG curve        
+        # determine initial insulin-only BG curve        
         self.y_BG_insulin_only = 0.0*self.y_BG
         for idx,x in enumerate(self.x_bolus):           
             self.y_BG_insulin_only += self.z_bolus[idx]*self.isf*(-1 + np.array([self.scalable_exp_iob(t, self.tp, self.td) for t in (self.x_BG-x)]))           
             
-        # # determine ICE-only BG (which will remain constant)
+        # determine ICE-only BG (which will remain constant)
         self.y_BG_no_insulin = self.y_BG - self.y_BG_insulin_only;        
                 
     def validate_bolus_textbox_string(self, *args):
@@ -336,10 +335,10 @@ class BGInteractor:
         self.remove_annotations_from_plot()
         self.my_carb_annotations.clear()
         for i, txt in enumerate(self.z_carb):
-            self.my_carb_annotations.append(self.ax.annotate(str(round(txt,2)) +  ' g', (self.x_carb[i], self.y_carb[i])))          
+            self.my_carb_annotations.append(self.ax.annotate(str(round(txt,2)) +  ' g', ((self.x_carb[i]), self.y_carb[i])))          
         self.my_bolus_annotations.clear()
         for i, txt in enumerate(self.z_bolus):
-            self.my_bolus_annotations.append(self.ax.annotate(str(round(txt,2)) +  ' U', (self.x_bolus[i], self.y_bolus[i])))        
+            self.my_bolus_annotations.append(self.ax.annotate(str(round(txt,2)) +  ' U', ((self.x_bolus[i]), self.y_bolus[i])))        
 
     def get_ind_under_point(self, event):
         # Return the index of the point closest to the event position or *None* if no point is within ``self.epsilon`` to the event position.    
@@ -428,7 +427,7 @@ if __name__ == '__main__':
 
     # set uri to read-only test database
     mongodb_uri = "mongodb+srv://test_pymongo_user:dwmgIlvrLC9mYIEu@cluster0.dbhmgel.mongodb.net"    
-    minBolus_to_load = 0.2  # Threshold to prevent autoboluses from cluttering things up
+    minBolus_to_load = 0.15  # Threshold to prevent autoboluses from cluttering things up
     bgi = BGInteractor(mongodb_uri,minBolus_to_load)
 
 
