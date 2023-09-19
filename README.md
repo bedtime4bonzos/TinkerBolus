@@ -1,5 +1,6 @@
 # TinkerBolus
-Visualize the effect of alternate insulin timing on historical blood glucose
+**TinkerBolus is an interactive tool that shows the effect of alternate insulin timing on historical blood glucose.**
+
 
 Use the "Load!" button to load historical blood glucose, insulin, and carb data.
 
@@ -11,4 +12,4 @@ Insulin boluses are displayed as green markers.  Insulin amounts and timing can 
 
 ![Screenshot 2023-09-19 114749](https://github.com/bedtime4bonzos/TinkerBolus/assets/6617751/4039aa05-c1bc-4736-91b9-ae400a5cf074)
 
-The MongoDB URI is currently set in the TinkerBolus.py if you'd like to use a URI other than the deault test URI provided
+The MongoDB URI is currently set in TinkerBolus.py if you'd like to use a URI other than the deault test URI provided.
