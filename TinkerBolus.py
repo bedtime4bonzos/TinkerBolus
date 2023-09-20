@@ -12,14 +12,14 @@ import certifi
 #%matplotlib auto
 
 class BGInteractor:
-    epsilon = 20  # max pixel distance to count as a vertex hit
+    epsilon = 25  # max pixel distance to count as a vertex hit
     y_offset = 4 # display distance from BG for carbs and insulin (should use display coords instead)
     td = float(360) # duration
     tp = float(75) # activity peak
     date = '2023-09-01'
     time = '07:00'
     timespan_minutes = 60*6 # minutes, although user input is hours
-    timespanmax_minutes = 60*48
+    timespanmax_minutes = 60*24
     utcoffset = -6 # mdt is -6
     isf = 176
     addbolus = 0.2  
@@ -142,12 +142,12 @@ class BGInteractor:
         
         #load initial carbs (this will remain fixed)
         self.x_carb = np.array([t.total_seconds() for t in (carb_times-t0)])/60
-        self.y_carb = 0*carb_values + 50  # for initialization only
+        self.y_carb = 0*carb_values + 100  # for initialization only
         self.z_carb = carb_values.copy() # carb amounts (grams)
         
         #load initial bolus insulin (these can be dragged)
         self.x_bolus = np.array([t.total_seconds() for t in (bolus_times-t0)])/60
-        self.y_bolus = 0*bolus_values + 0 # for initialization only
+        self.y_bolus = 0*bolus_values + 100 # for initialization only
         self.z_bolus = bolus_values.copy() # insulin amount (Units)                
         
         self.calculate_insulin_counteraction()
@@ -170,7 +170,11 @@ class BGInteractor:
         
         self.transform_data_to_display = self.ax.transData
         self.move_y_bolus_and_carb_to_y_BG()    
-        #self.ax.xaxis.set_major_locator(FixedLocator(np.arange(0,self.ax.get_xlim()[1],60)))        
+        # self.ax.xaxis.set_major_locator(FixedLocator(np.arange(0,self.ax.get_xlim()[1],60)))      
+        
+        # fix axes
+        self.ax.set_xlim(self.ax.get_xlim())
+        self.ax.set_ylim(min(55,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
 
         plt.show()
 
@@ -343,7 +347,7 @@ class BGInteractor:
         
         # prevent boluses and carbs from leaving the plot
         y_min, y_max = self.ax.get_ylim()  
-        edge_delta = (y_max-y_min)*.04
+        edge_delta = (y_max-y_min)*.02
         y_min_with_delta = y_min + edge_delta
         y_max_with_delta = y_max - edge_delta
                 
