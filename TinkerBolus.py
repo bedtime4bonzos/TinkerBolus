@@ -74,7 +74,10 @@ class BGInteractor:
         self._ind = None
         self.canvas = self.fig.canvas
         
-        self.load() # Load with defaults       
+        self.load() # Load with defaults
+
+        plt.show()
+        
         
     def connect_to_mongodb(self):
         # Create a new client and connect to the server
@@ -176,14 +179,13 @@ class BGInteractor:
         self.ax.set_xlim(self.ax.get_xlim())
         self.ax.set_ylim(min(55,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
 
-        plt.show()
-
     def connect_handlers(self):
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
         self.canvas.mpl_connect('button_release_event', self.on_button_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         self.canvas.mpl_connect('key_press_event', self.on_key_press)
         self.canvas.mpl_connect('axes_leave_event',self.on_leave_axes)
+        self.ax.callbacks.connect('ylim_changed',self.on_ylims_change)
 
     def disconnect_handlers(self):
         self.canvas.mpl_disconnect('button_press_event')
@@ -191,6 +193,7 @@ class BGInteractor:
         self.canvas.mpl_disconnect('motion_notify_event')
         self.canvas.mpl_disconnect('key_press_event')    
         self.canvas.mpl_disconnect('axes_leave_event')
+        self.ax.callbacks.disconnect('ylim_changed')
           
     def load(self,*args):  
         if self.timespan_minutes > self.timespanmax_minutes:
@@ -401,6 +404,8 @@ class BGInteractor:
         if event.inaxes is None:
             return
         if event.button != 1:
+            return   
+        if self.ax.get_navigate_mode():
             return        
         self._ind = self.get_ind_under_point(event)    
         
@@ -409,6 +414,8 @@ class BGInteractor:
         """Callback for mouse button releases."""
         if event.button != 1:
             return
+        if self.ax.get_navigate_mode():
+            return        
         self.move_y_bolus_and_carb_to_y_BG()                 
         self._ind = None
 
@@ -419,6 +426,8 @@ class BGInteractor:
         if event.inaxes is None:
             return
         if event.button != 1:
+            return
+        if self.ax.get_navigate_mode():
             return
                 
         self.x_bolus[self._ind] = event.xdata;
@@ -466,7 +475,11 @@ class BGInteractor:
         elif event.key == 'i':
             self.insert_insulin(event)
         elif event.key == 'a':
-            self.accumulate_insulin_for_bolus(event)            
+            self.accumulate_insulin_for_bolus(event)                 
+    
+    def on_ylims_change(self,event_ax):
+        self.move_y_bolus_and_carb_to_y_BG()                        
+        self.fig.canvas.draw_idle()   
                                                
     def redraw_BG(self):        
         self.set_y_BG_insulin_only()  # set the new insulin BG curves
