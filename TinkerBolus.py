@@ -9,7 +9,17 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import certifi
 
-#%matplotlib auto
+#TODO - normalize carb/bolus marker sizes
+#TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)"
+#TODO - plot IE and ICE (might help determine true ISF?)
+#TODO - box around load inputs
+#TODO - Move ISF field to right side and allow changes independent of load
+#TODO - minBolus_to_load user-settable
+#TODO - URI user-settable
+#TODO - Add other insulin models
+#TODO - support mmol/L
+#TODO - Dashed lines at 80/180 (and mmol/L)
+#TODO - Display info/metrics (datetime, GMI, min, max, "score")
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -21,7 +31,7 @@ class BGInteractor:
     timespan_minutes = 60*6 # minutes, although user input is hours
     timespanmax_minutes = 60*24
     utcoffset = -6 # mdt is -6
-    isf = 176
+    isf = 200
     addbolus = 0.2  
     accumulated_insulin = 0.0  # total of insulin accumulated with 'a'
     
@@ -177,7 +187,7 @@ class BGInteractor:
         
         # fix axes
         self.ax.set_xlim(self.ax.get_xlim())
-        self.ax.set_ylim(min(55,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
+        self.ax.set_ylim(min(50,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
 
     def connect_handlers(self):
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
