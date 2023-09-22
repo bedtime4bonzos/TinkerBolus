@@ -11,4 +11,6 @@ Insulin boluses are displayed as green markers.  Insulin amounts and timing can 
 
 The MongoDB URI is currently set in TinkerBolus.py if you'd like to use a URI other than the deault test URI provided.
 
+Currently the only insulin model available in TinkerBolus is the Scalable Exponential Insulin Model discussed at <https://github.com/LoopKit/Loop/issues/388> with an activity peak of 75 minutes and a duration of 360 minutes (approximate model for Novolog).
+
 ![Screenshot 2023-09-19 114749](https://github.com/bedtime4bonzos/TinkerBolus/assets/6617751/4039aa05-c1bc-4736-91b9-ae400a5cf074)
