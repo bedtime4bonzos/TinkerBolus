@@ -9,7 +9,6 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import certifi
 
-#TODO - normalize carb/bolus marker sizes
 #TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)"
 #TODO - plot IE and ICE (might help determine true ISF?)
 #TODO - box around load inputs
@@ -34,6 +33,8 @@ class BGInteractor:
     isf = 200
     addbolus = 0.2  
     accumulated_insulin = 0.0  # total of insulin accumulated with 'a'
+    marker_size_min = 10
+    marker_size_max = 500
     
     def __init__(self,uri,minBolus_to_load):
         self.minBolus_to_load = minBolus_to_load  
@@ -169,8 +170,8 @@ class BGInteractor:
 
         self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)                
         self.sc_BG = self.ax.scatter(self.x_BG,self.y_BG,alpha = 0.75,color="blue", zorder=.2)
-        self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb,self.z_carb*150/20, alpha = 0.8, color='orange', zorder=.3)
-        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.z_bolus*150, alpha = 0.8, color = 'green', zorder=.4)
+        self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb,self.get_marker_sizes(self.z_carb), alpha = 0.8, color='orange', zorder=.3)
+        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.get_marker_sizes(self.z_bolus), alpha = 0.8, color = 'green', zorder=.4)
         
         self.my_carb_annotations=[]
         self.my_bolus_annotations=[]        
@@ -369,12 +370,13 @@ class BGInteractor:
         self.y_bolus = self.y_offset + np.interp(self.x_bolus,self.x_BG,y_BG_temp)
         self.y_bolus[self.y_bolus<y_min] = y_min_with_delta
         self.y_bolus[self.y_bolus>y_max] = y_max_with_delta
-        self.y_carb[self.y_carb<y_min] = y_min_with_delta
-        self.y_carb[self.y_carb>y_max] = y_max_with_delta                
-            
-        self.y_carb = -self.y_offset + np.interp(self.x_carb,self.x_BG,y_BG_temp)        
         self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
+                       
+        self.y_carb = -self.y_offset + np.interp(self.x_carb,self.x_BG,y_BG_temp)   
+        self.y_carb[self.y_carb<y_min] = y_min_with_delta
+        self.y_carb[self.y_carb>y_max] = y_max_with_delta                     
         self.sc_carb.set_offsets(np.c_[self.x_carb,self.y_carb])
+        
         self.update_annotations()
         self.fig.canvas.draw_idle()      
     
@@ -499,10 +501,16 @@ class BGInteractor:
         
     def redraw_bolus(self):     # need this instead of set_offsets for the z_bolus sizing to update correctly   
         self.sc_bolus.remove()
-        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.z_bolus*150, alpha = 0.8, color = 'green', zorder=.4)
-        self.fig.canvas.draw_idle()        
+        self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.get_marker_sizes(self.z_bolus), alpha = 0.8, color = 'green', zorder=.4)
+        self.fig.canvas.draw_idle() 
+    
+    def get_marker_sizes(self,z):  # this could be improved by relating carb and bolus sizes by CR
+        if not len(z) == 0:
+            return np.interp(abs(z),[0.0,max(z)],[self.marker_size_min,self.marker_size_max])
+        else:
+            return []
+        
          
-
 # main stuff here
 if __name__ == '__main__':
 
