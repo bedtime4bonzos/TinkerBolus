@@ -172,6 +172,7 @@ class BGInteractor:
     def display_data(self):                
 
         self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)                
+        self.ax.plot(self.x_BG,self.y_IE,color="grey", linewidth=1, zorder=.1)                
         self.sc_BG = self.ax.scatter(self.x_BG,self.y_BG,alpha = 0.75,color="blue", zorder=.2)
         self.sc_IE, = self.ax.plot(self.x_BG,self.y_IE,color="green", zorder=.15)
         self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb,self.get_marker_sizes(self.z_carb), alpha = 0.8, color='orange', zorder=.3)
