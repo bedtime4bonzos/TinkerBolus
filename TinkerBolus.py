@@ -8,9 +8,9 @@ from matplotlib.widgets import Button, TextBox
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import certifi
+from scipy.ndimage import uniform_filter1d
 
 #TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)"
-#TODO - plot IE and ICE (might help determine true ISF?)
 #TODO - box around load inputs
 #TODO - Move ISF field to right side and allow changes independent of load
 #TODO - minBolus_to_load user-settable
@@ -151,8 +151,10 @@ class BGInteractor:
         
         # load initial BG
         t0 = BG_times[0]
-        self.x_BG = np.array([t.total_seconds() for t in (BG_times-t0)])/60       
+        self.x_BG_orig = np.array([t.total_seconds() for t in (BG_times-t0)])/60       
         self.y_BG = BG_values.copy()
+        self.x_BG = np.arange(0,max(self.x_BG_orig),5) # TODO Remove duplicates instead of interpolating.  Note that this also affects the differential calculation used for ICE and IE
+        self.y_BG = np.interp(self.x_BG,self.x_BG_orig,self.y_BG)
         
         #load initial carbs (this will remain fixed)
         self.x_carb = np.array([t.total_seconds() for t in (carb_times-t0)])/60
@@ -165,11 +167,13 @@ class BGInteractor:
         self.z_bolus = bolus_values.copy() # insulin amount (Units)                
         
         self.calculate_insulin_counteraction()
+        self.set_y_BG_insulin_only()        
         
     def display_data(self):                
 
         self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)                
         self.sc_BG = self.ax.scatter(self.x_BG,self.y_BG,alpha = 0.75,color="blue", zorder=.2)
+        self.sc_IE, = self.ax.plot(self.x_BG,self.y_IE,color="green", zorder=.15)
         self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb,self.get_marker_sizes(self.z_carb), alpha = 0.8, color='orange', zorder=.3)
         self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.get_marker_sizes(self.z_bolus), alpha = 0.8, color = 'green', zorder=.4)
         
@@ -188,7 +192,15 @@ class BGInteractor:
         
         # fix axes
         self.ax.set_xlim(self.ax.get_xlim())
-        self.ax.set_ylim(min(50,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
+        self.ax.set_ylim(min(-20,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
+        
+        # plot ICE
+        # self.y_ICE = (5 * np.gradient(self.y_BG_no_insulin)/np.gradient(self.x_BG)) # "central" difference
+        self.y_ICE = uniform_filter1d((5 * np.gradient(self.y_BG_no_insulin)/np.gradient(self.x_BG)),size=3) # "central" difference
+        self.sc_ICE = self.ax.plot(self.x_BG,self.y_ICE,color="orange", zorder=.1)     
+        #self.y_ICE = 5 * np.diff(self.y_BG_no_insulin)/np.diff(self.x_BG)        # forward difference
+        #self.sc_ICE = self.ax.plot(self.x_BG[1:],self.y_ICE,color="orange", zorder=.1)
+        
 
     def connect_handlers(self):
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -355,6 +367,8 @@ class BGInteractor:
         self.y_BG_insulin_only = 0.0*self.y_BG
         for idx, x in enumerate(self.x_bolus):           
             self.y_BG_insulin_only += self.z_bolus[idx]*self.isf*(-1 + np.array([self.scalable_exp_iob(t, self.tp, self.td) for t in (self.x_BG-x)]))           
+        # also set IE
+        self.y_IE = -5 * np.gradient(self.y_BG_insulin_only)/np.gradient(self.x_BG) # "central" difference
                 
     def move_y_bolus_and_carb_to_y_BG(self):        
         # move y_bolus and y_carb to be near BG plot
@@ -497,6 +511,7 @@ class BGInteractor:
         self.set_y_BG_insulin_only()  # set the new insulin BG curves
         self.y_BG = self.y_BG_no_insulin + self.y_BG_insulin_only
         self.sc_BG.set_offsets(np.c_[self.x_BG,self.y_BG])
+        self.sc_IE.set_ydata(self.y_IE) 
         self.fig.canvas.draw_idle()
         
     def redraw_bolus(self):     # need this instead of set_offsets for the z_bolus sizing to update correctly   
