@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator, FixedLocator
-import pprint
 
 import datetime
 from matplotlib.widgets import Button, TextBox
@@ -14,11 +13,13 @@ from scipy.ndimage import uniform_filter1d
 #TODO - box around load inputs
 #TODO - Move ISF field to right side and allow changes independent of load
 #TODO - minBolus_to_load user-settable
-#TODO - URI user-settable
+#TODO - URI user-settable (pull from Tidepool?)
 #TODO - Add other insulin models
 #TODO - support mmol/L
 #TODO - Dashed lines at 80/180 (and mmol/L)
 #TODO - Display info/metrics (datetime, GMI, min, max, "score")
+#TODO - Consider loading data prior to window start so ICE/IE initital conditions include IOB from previous boluses
+#TODO - Optimize redrawing during bolus drag (seems responsive enough as long as we restrict to 24 hr window)
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -41,6 +42,7 @@ class BGInteractor:
         self.uri = uri
         
         self.fig, self.ax = plt.subplots(figsize=(9,6))
+        self.fig.set_facecolor('lightgrey')
         self.fig.subplots_adjust(bottom=0.2)        
         # self.ax.set_ylim(55,220)
         self.ax.grid(True)
@@ -514,6 +516,7 @@ class BGInteractor:
         self.sc_BG.set_offsets(np.c_[self.x_BG,self.y_BG])
         self.sc_IE.set_ydata(self.y_IE) 
         self.fig.canvas.draw_idle()
+        self.move_y_bolus_and_carb_to_y_BG()
         
     def redraw_bolus(self):     # need this instead of set_offsets for the z_bolus sizing to update correctly   
         self.sc_bolus.remove()
