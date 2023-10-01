@@ -17,10 +17,11 @@ from scipy.ndimage import uniform_filter1d
 #TODO - URI user-settable (pull from Tidepool?)
 #TODO - Add other insulin models
 #TODO - support mmol/L
-#TODO - Dashed lines at 80/180 (and mmol/L)
 #TODO - Display info/metrics (datetime, GMI, min, max, "score")
 #TODO - Consider loading data prior to window start so ICE/IE initital conditions include IOB from previous boluses
 #TODO - Optimize redrawing during bolus drag (seems responsive enough as long as we restrict to 24 hr window)
+#TODO - Highlight bolus under mouse
+#TODO - Mouse-only controls (right-click and select from drop-down instead of keyboard)
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -197,6 +198,17 @@ class BGInteractor:
         # fix axes
         self.ax.set_xlim(self.ax.get_xlim())
         self.ax.set_ylim(min(-20,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
+        
+        # Plot BG high and low target range lines
+        self.ax.axhline(y=300, color='r', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
+        self.ax.axhline(y=55, color='r', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
+        self.ax.axhline(y=80, color='g', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
+        self.ax.axhline(y=180, color='g', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
+        self.ax.axhspan(300, 1000, color='r', alpha=0.02)
+        self.ax.axhspan(180, 300, color='y', alpha=0.04)
+        self.ax.axhspan(80, 180, color='g', alpha=0.09)
+        self.ax.axhspan(55, 80, color='y', alpha=0.04)
+        self.ax.axhspan(-100, 55, color='r', alpha=0.02)
         
         # plot ICE
         # self.y_ICE = (5 * np.gradient(self.y_BG_no_insulin)/np.gradient(self.x_BG)) # "central" difference
