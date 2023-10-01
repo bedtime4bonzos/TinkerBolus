@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator, FixedLocator
+from matplotlib.backend_tools import Cursors
 
 import datetime
 from matplotlib.widgets import Button, TextBox
@@ -41,7 +42,7 @@ class BGInteractor:
         self.minBolus_to_load = minBolus_to_load  
         self.uri = uri
         
-        self.fig, self.ax = plt.subplots(figsize=(9,6))
+        self.fig, self.ax = plt.subplots(figsize=(10,6))
         self.fig.set_facecolor('lightgrey')
         self.fig.subplots_adjust(bottom=0.2)        
         # self.ax.set_ylim(55,220)
@@ -185,7 +186,7 @@ class BGInteractor:
         
         self.ax.set_xlabel('Time (minutes)')
         self.ax.set_ylabel('BG (mg/dL)')
-        self.ax.set_title("TinkerBolus\nDrag, Delete (press 'd'), Accumulate ('a'), or Insert ('i') Insulin Entries")
+        self.ax.set_title("TinkerBolus\nDrag, Delete (mouse-over and press 'd'), Accumulate ('a'), or Insert ('i') Insulin Entries")
         
         self.ax.grid(True)
         
@@ -450,6 +451,9 @@ class BGInteractor:
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
+        if not self.fig.canvas.widgetlock.locked():
+            self.fig.canvas.set_cursor(Cursors.HAND if event.inaxes is self.ax  else Cursors.POINTER)               
+        
         if self._ind is None:
             return
         if event.inaxes is None:
