@@ -20,8 +20,8 @@ from scipy.ndimage import uniform_filter1d
 #TODO - Display info/metrics (datetime, GMI, min, max, "score")
 #TODO - Consider loading data prior to window start so ICE/IE initital conditions include IOB from previous boluses
 #TODO - Optimize redrawing during bolus drag (seems responsive enough as long as we restrict to 24 hr window)
-#TODO - Highlight bolus under mouse
 #TODO - Mouse-only controls (right-click and select from drop-down instead of keyboard)
+#TODO - Verify insulin effect at insulin t=0 is correct
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -86,7 +86,7 @@ class BGInteractor:
         self.bolus_text_box.on_submit(self.validate_bolus_textbox_string)
         self.bolus_text_box.set_val(str(self.addbolus))                        
         
-        self._ind = None
+        self.ind_under_point = None
         self.canvas = self.fig.canvas
         
         self.load() # Load with defaults
@@ -173,6 +173,10 @@ class BGInteractor:
         self.calculate_insulin_counteraction()
         self.set_y_BG_insulin_only()        
         
+        self.x_bolus_highlighted = [];
+        self.y_bolus_highlighted = [];
+        self.z_bolus_highlighted = [];
+        
     def display_data(self):                
 
         self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)                
@@ -181,6 +185,7 @@ class BGInteractor:
         self.sc_IE, = self.ax.plot(self.x_BG,self.y_IE,color="green", zorder=.15)
         self.sc_carb = self.ax.scatter(self.x_carb,self.y_carb,self.get_marker_sizes(self.z_carb), alpha = 0.8, color='orange', zorder=.3)
         self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.get_marker_sizes(self.z_bolus), alpha = 0.8, color = 'green', zorder=.4)
+        self.sc_bolus_highlighted = self.ax.scatter(self.x_bolus_highlighted,self.y_bolus_highlighted)
         
         self.my_carb_annotations=[]
         self.my_bolus_annotations=[]        
@@ -449,7 +454,7 @@ class BGInteractor:
             return   
         if self.ax.get_navigate_mode():
             return        
-        self._ind = self.get_ind_under_point(event)    
+        self.ind_under_point = self.get_ind_under_point(event)    
         
         
     def on_button_release(self, event):
@@ -459,27 +464,43 @@ class BGInteractor:
         if self.ax.get_navigate_mode():
             return        
         self.move_y_bolus_and_carb_to_y_BG()                 
-        self._ind = None
+        self.ind_under_point = None
 
     def on_mouse_move(self, event):
         """Callback for mouse movements."""
         if not self.fig.canvas.widgetlock.locked():
-            self.fig.canvas.set_cursor(Cursors.HAND if event.inaxes is self.ax  else Cursors.POINTER)               
-        
-        if self._ind is None:
-            return
+            self.fig.canvas.set_cursor(Cursors.HAND if event.inaxes is self.ax  else Cursors.POINTER)                       
+                    
         if event.inaxes is None:
             return
+        
         if event.button != 1:
+            ind_highlighted = self.get_ind_under_point(event)        
+            self.highlight_bolus(ind_highlighted)
+            return 
+            
+        if self.ind_under_point is None:
             return
+
         if self.ax.get_navigate_mode():
             return
-                
-        self.x_bolus[self._ind] = event.xdata;
-        self.y_bolus[self._ind] = event.ydata;        
+       
+        self.x_bolus[self.ind_under_point] = event.xdata;
+        self.y_bolus[self.ind_under_point] = event.ydata;        
         self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
         self.redraw_BG()
+        self.highlight_bolus(self.ind_under_point)        
                 
+    def highlight_bolus(self,ind_highlighted):
+        if ind_highlighted is not None:                        
+            self.x_bolus_highlighted = np.array([self.x_bolus[ind_highlighted]]);
+            self.y_bolus_highlighted = np.array([self.y_bolus[ind_highlighted]]);             
+            self.z_bolus_highlighted = np.array([self.z_bolus[ind_highlighted]]);             
+            self.redraw_bolus_highlighted()
+        else:
+            self.sc_bolus_highlighted.set_visible(False)  
+            self.fig.canvas.draw_idle()          
+        
     def delete_insulin(self,event):
         ind = self.get_ind_under_point(event)
         if ind is not None:                
@@ -488,6 +509,7 @@ class BGInteractor:
             self.z_bolus = np.delete(self.z_bolus, ind)
         # self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
         self.redraw_bolus()
+        self.sc_bolus_highlighted.set_visible(False)       
         self.redraw_BG()                
         self.move_y_bolus_and_carb_to_y_BG()    
         
@@ -500,6 +522,7 @@ class BGInteractor:
         self.redraw_bolus()
         self.redraw_BG() 
         self.move_y_bolus_and_carb_to_y_BG()                        
+        self.sc_bolus_highlighted.set_visible(False)                         
         self.fig.canvas.draw_idle()   
         self.accumulated_insulin = 0
         
@@ -539,9 +562,16 @@ class BGInteractor:
         self.sc_bolus = self.ax.scatter(self.x_bolus,self.y_bolus,self.get_marker_sizes(self.z_bolus), alpha = 0.8, color = 'green', zorder=.4)
         self.fig.canvas.draw_idle() 
     
-    def get_marker_sizes(self,z):  # this could be improved by relating carb and bolus sizes by CR
+    def redraw_bolus_highlighted(self):     # need this instead of set_offsets for the z_bolus sizing to update correctly   
+        if self.sc_bolus_highlighted is not None:
+            self.sc_bolus_highlighted.remove()
+        self.sc_bolus_highlighted = self.ax.scatter(self.x_bolus_highlighted,self.y_bolus_highlighted,1.2*self.get_marker_sizes(self.z_bolus_highlighted, zmax = max(self.z_bolus)), alpha = .8, color = 'darkgreen', edgecolors= "darkgreen", linewidth=2, zorder=.4)
+        self.fig.canvas.draw_idle() 
+
+    def get_marker_sizes(self,z,*args,**kwargs):  # this could be improved by relating carb and bolus sizes by CR
         if not len(z) == 0:
-            return np.interp(abs(z),[0.0,max(z)],[self.marker_size_min,self.marker_size_max])
+            zmax = kwargs.get('zmax',max(z))
+            return np.interp(abs(z),[0.0,zmax],[self.marker_size_min,self.marker_size_max])
         else:
             return []
         
