@@ -10,7 +10,7 @@ from pymongo.server_api import ServerApi
 import certifi
 from scipy.ndimage import uniform_filter1d
 
-#TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)"
+#TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)" (does pare accumulate or not? probably does)
 #TODO - box around load inputs
 #TODO - Move ISF field to right side and allow changes independent of load
 #TODO - minBolus_to_load user-settable
@@ -22,6 +22,7 @@ from scipy.ndimage import uniform_filter1d
 #TODO - Optimize redrawing during bolus drag (seems responsive enough as long as we restrict to 24 hr window)
 #TODO - Mouse-only controls (right-click and select from drop-down instead of keyboard)
 #TODO - Verify insulin effect at insulin t=0 is correct
+#TODO - Figure out what causes load to fail on 2023-09-08 MDT around 22:00
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -205,12 +206,13 @@ class BGInteractor:
         self.ax.set_ylim(min(-20,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
         
         # Plot BG high and low target range lines
-        self.ax.axhline(y=300, color='r', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
+
         self.ax.axhline(y=55, color='r', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
         self.ax.axhline(y=80, color='g', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
-        self.ax.axhline(y=180, color='g', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)
-        self.ax.axhspan(300, 1000, color='r', alpha=0.05)
-        self.ax.axhspan(180, 300, color='y', alpha=0.05)
+        self.ax.axhline(y=180, color='g', linestyle='-', linewidth=.5, zorder=0, alpha=0.5)        
+        self.ax.axhline(y=301, color='r', linestyle='-', linewidth=.5, zorder=0, alpha=0.5) #line at 301 so it doesn't hide behind the grid lines
+        self.ax.axhspan(301, 1000, color='r', alpha=0.04)
+        self.ax.axhspan(180, 301, color='y', alpha=0.05)
         self.ax.axhspan(80, 180, color='g', alpha=0.1)
         self.ax.axhspan(55, 80, color='y', alpha=0.05)
         self.ax.axhspan(-100, 55, color='r', alpha=0.04)
