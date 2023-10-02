@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator, FixedLocator
+from matplotlib.ticker import MultipleLocator, AutoMinorLocator, FixedLocator, FormatStrFormatter
 from matplotlib.backend_tools import Cursors
 
 import datetime
@@ -221,6 +221,8 @@ class BGInteractor:
         self.sc_ICE = self.ax.plot(self.x_BG,self.y_ICE,color="orange", zorder=.1)     
         #self.y_ICE = 5 * np.diff(self.y_BG_no_insulin)/np.diff(self.x_BG)        # forward difference
         #self.sc_ICE = self.ax.plot(self.x_BG[1:],self.y_ICE,color="orange", zorder=.1)
+
+        self.ax.xaxis.set_major_locator(MultipleLocator(60))
         
 
     def connect_handlers(self):
