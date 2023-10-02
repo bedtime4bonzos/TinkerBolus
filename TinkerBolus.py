@@ -23,6 +23,7 @@ from scipy.ndimage import uniform_filter1d
 #TODO - Mouse-only controls (right-click and select from drop-down instead of keyboard)
 #TODO - Verify insulin effect at insulin t=0 is correct
 #TODO - Figure out what causes load to fail on 2023-09-08 MDT around 22:00
+#TODO - Grey boluses at the original location so it's more obvious what has changed?
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -407,13 +408,13 @@ class BGInteractor:
         y_BG_temp = np.array([float(x) for x in self.y_BG])
         
         self.y_bolus = self.y_offset + np.interp(self.x_bolus,self.x_BG,y_BG_temp)
-        self.y_bolus[self.y_bolus<y_min] = y_min_with_delta
-        self.y_bolus[self.y_bolus>y_max] = y_max_with_delta
+        self.y_bolus[self.y_bolus<y_min_with_delta] = y_min_with_delta
+        self.y_bolus[self.y_bolus>y_max_with_delta] = y_max_with_delta
         self.sc_bolus.set_offsets(np.c_[self.x_bolus,self.y_bolus])
                        
         self.y_carb = -self.y_offset + np.interp(self.x_carb,self.x_BG,y_BG_temp)   
-        self.y_carb[self.y_carb<y_min] = y_min_with_delta
-        self.y_carb[self.y_carb>y_max] = y_max_with_delta                     
+        self.y_carb[self.y_carb<y_min_with_delta] = y_min_with_delta
+        self.y_carb[self.y_carb>y_max_with_delta] = y_max_with_delta                     
         self.sc_carb.set_offsets(np.c_[self.x_carb,self.y_carb])
         
         self.update_annotations()
