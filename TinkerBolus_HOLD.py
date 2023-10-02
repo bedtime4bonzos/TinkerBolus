@@ -2,6 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator, FixedLocator
 from matplotlib.backend_tools import Cursors
+import pprint
+import pytz
+import calendar
+import time
 
 import datetime
 from matplotlib.widgets import Button, TextBox
@@ -10,7 +14,7 @@ from pymongo.server_api import ServerApi
 import certifi
 from scipy.ndimage import uniform_filter1d
 
-#TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)"
+#TODO - add cut (pare) functionality; change text to "Bolus to Insert/Cut (U)" (does pare accumulate or not? probably does)
 #TODO - box around load inputs
 #TODO - Move ISF field to right side and allow changes independent of load
 #TODO - minBolus_to_load user-settable
@@ -22,6 +26,7 @@ from scipy.ndimage import uniform_filter1d
 #TODO - Optimize redrawing during bolus drag (seems responsive enough as long as we restrict to 24 hr window)
 #TODO - Highlight bolus under mouse
 #TODO - Mouse-only controls (right-click and select from drop-down instead of keyboard)
+#TODO - Verify insulin effect at insulin t=0 is correct
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -30,8 +35,8 @@ class BGInteractor:
     tp = float(75) # activity peak
     date = '2023-09-01'
     time = '07:00'
-    timespan_minutes = 60*6 # minutes, although user input is hours
-    timespanmax_minutes = 60*24
+    timespan_minutes = 60*24 # minutes, although user input is hours
+    timespanmax_minutes = 60*48
     utcoffset = -6 # mdt is -6
     isf = 200
     addbolus = 0.2  
@@ -43,8 +48,16 @@ class BGInteractor:
         self.minBolus_to_load = minBolus_to_load  
         self.uri = uri
         
+        # this block is sloppy, but it sets the default load to today
+        now = datetime.datetime.now(pytz.timezone('America/Denver'))
+        self.date = "{:04d}-{:02d}-{:02d}".format(now.year, now.month, now.day)
+        self.time = '07:00'    
+        self.utcoffset = (calendar.timegm(time.localtime()) - calendar.timegm(time.gmtime()))/60/60
+        self.timespanmax_minutes = 60*24
+        
         self.fig, self.ax = plt.subplots(figsize=(10,6))
-        self.fig.set_facecolor('lightgrey')
+        self.fig.set_facecolor('lightgrey')        
+        
         self.fig.subplots_adjust(bottom=0.2)        
         # self.ax.set_ylim(55,220)
         self.ax.grid(True)
@@ -152,10 +165,14 @@ class BGInteractor:
         minBolusFilt = (bolus_values > self.minBolus_to_load)  # Threshold to prevent autoboluses from cluttering things up
         bolus_times = bolus_times[minBolusFilt]
         bolus_values = bolus_values[minBolusFilt]                
+
         
         # load initial BG
         t0 = BG_times[0]
-        self.x_BG_orig = np.array([t.total_seconds() for t in (BG_times-t0)])/60       
+        # pprint.pprint(carb_times-t0)
+        self.bdw = BG_times
+        self.x_BG_orig = np.array([t.total_seconds() for t in (BG_times-t0)])/60
+        
         self.y_BG = BG_values.copy()
         self.x_BG = np.arange(0,max(self.x_BG_orig),5) # TODO Remove duplicates instead of interpolating.  Note that this also affects the differential calculation used for ICE and IE
         self.y_BG = np.interp(self.x_BG,self.x_BG_orig,self.y_BG)
@@ -173,9 +190,10 @@ class BGInteractor:
         self.calculate_insulin_counteraction()
         self.set_y_BG_insulin_only()        
         
+        
     def display_data(self):                
 
-        self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)                
+        self.ax.plot(self.x_BG,self.y_BG,color="grey", zorder=.1)   
         self.ax.plot(self.x_BG,self.y_IE,color="grey", linewidth=1, zorder=.1)                
         self.sc_BG = self.ax.scatter(self.x_BG,self.y_BG,alpha = 0.75,color="blue", zorder=.2)
         self.sc_IE, = self.ax.plot(self.x_BG,self.y_IE,color="green", zorder=.15)
@@ -195,6 +213,7 @@ class BGInteractor:
         self.move_y_bolus_and_carb_to_y_BG()    
         # self.ax.xaxis.set_major_locator(FixedLocator(np.arange(0,self.ax.get_xlim()[1],60)))      
         
+        
         # fix axes
         self.ax.set_xlim(self.ax.get_xlim())
         self.ax.set_ylim(min(-20,self.ax.get_ylim()[0]),self.ax.get_ylim()[1])
@@ -210,6 +229,8 @@ class BGInteractor:
         self.ax.axhspan(55, 80, color='y', alpha=0.05)
         self.ax.axhspan(-100, 55, color='r', alpha=0.04)
         
+        # self.ax.yaxis.set_major_locator(FixedLocator([]))
+
         # plot ICE
         # self.y_ICE = (5 * np.gradient(self.y_BG_no_insulin)/np.gradient(self.x_BG)) # "central" difference
         self.y_ICE = uniform_filter1d((5 * np.gradient(self.y_BG_no_insulin)/np.gradient(self.x_BG)),size=3) # "central" difference
@@ -367,7 +388,7 @@ class BGInteractor:
         self.validate_time_textbox_string()
         self.validate_timespan_textbox_string()
         self.validate_utcoffset_textbox_string()        
-    
+
     def scalable_exp_iob(self,t, tp, td):
         if t < 0:     # equation isn't valid outside of range [0,td]
             return 1
@@ -462,7 +483,8 @@ class BGInteractor:
         self._ind = None
 
     def on_mouse_move(self, event):
-        """Callback for mouse movements."""
+        """Callback for mouse movements."""   
+
         if not self.fig.canvas.widgetlock.locked():
             self.fig.canvas.set_cursor(Cursors.HAND if event.inaxes is self.ax  else Cursors.POINTER)               
         
