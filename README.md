@@ -13,5 +13,4 @@ The MongoDB URI is currently set in TinkerBolus.py if you'd like to use a URI ot
 
 Currently the only insulin model available in TinkerBolus is the Scalable Exponential Insulin Model discussed at <https://github.com/LoopKit/Loop/issues/388> with an activity peak of 75 minutes and a duration of 360 minutes (approximate model for Novolog).
 
-![image](https://github.com/bedtime4bonzos/TinkerBolus/assets/6617751/86cf4004-80f5-4686-a78b-2326cacda404)
-
+![image](https://github.com/bedtime4bonzos/TinkerBolus/assets/6617751/3c7b4d08-bd20-4ed1-a2c1-5703250057a8)
