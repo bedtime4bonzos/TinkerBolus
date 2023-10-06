@@ -140,16 +140,16 @@ class BGInteractor:
             })
 
         # Initial extraction (leftover from initial testing -- need to clean this up a bit)
-        BG_times = np.array([datetime.datetime.fromisoformat(myBG.get('sysTime')) for myBG in myBGs])
+        BG_times = np.array([(datetime.datetime.fromisoformat(myBG.get('sysTime')[:-1]) if myBG.get('sysTime')[-1] == 'Z' else datetime.datetime.fromisoformat(myBG.get('sysTime')))  for myBG in myBGs])
         BG_values = np.array([myBG.get('sgv') for myBG in myBGs.rewind()])
         bgNoneFilt = np.where(np.array(BG_values) != None)[0]
         BG_times = BG_times[bgNoneFilt]
         BG_values = BG_values[bgNoneFilt]
 
-        carb_times = np.array([datetime.datetime.fromisoformat(myCarb.get('timestamp')) for myCarb in myCarbs])
+        carb_times = np.array([(datetime.datetime.fromisoformat(myCarb.get('timestamp')[:-1]) if myCarb.get('timestamp')[-1] == 'Z' else datetime.datetime.fromisoformat(myCarb.get('timestamp')))  for myCarb in myCarbs])
         carb_values = np.array([myCarb.get('carbs') for myCarb in myCarbs.rewind()])
 
-        bolus_times = np.array([datetime.datetime.fromisoformat(myBolus.get('timestamp')) for myBolus in myBoluses])
+        bolus_times = np.array([(datetime.datetime.fromisoformat(myBolus.get('timestamp')[:-1]) if myBolus.get('timestamp')[-1] == 'Z' else datetime.datetime.fromisoformat(myBolus.get('timestamp')))  for myBolus in myBoluses])
         bolus_values = np.array([myBolus.get('insulin') for myBolus in myBoluses.rewind()])
         minBolusFilt = (bolus_values > self.minBolus_to_load)  # Threshold to prevent autoboluses from cluttering things up
         bolus_times = bolus_times[minBolusFilt]
