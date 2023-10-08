@@ -1,6 +1,7 @@
 # TinkerBolus
 **TinkerBolus is an interactive tool that shows the effect of alternate insulin timing on historical blood glucose.  It is intended as a conceptual visualization only and should not be used to make changes to insulin therapy.  These visualizations make several unreliable assumptions, in particular that the insulin model is correct and that ISF is known and is constant.**
 
+To run TinkerBolus, download and run TinkerBolus.py as a Python script.  (The following screenshot is not interactive.)
 ![image](https://github.com/bedtime4bonzos/TinkerBolus/assets/6617751/18816d85-0481-4446-b61c-90f1056a741f)
 
 Use the "Load!" button to load historical blood glucose, insulin, and carb data.
