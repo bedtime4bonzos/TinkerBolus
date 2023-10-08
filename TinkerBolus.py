@@ -22,8 +22,8 @@ from scipy.ndimage import uniform_filter1d
 #TODO - Optimize redrawing during bolus drag (seems responsive enough as long as we restrict to 24 hr window)
 #TODO - Mouse-only controls (right-click and select from drop-down instead of keyboard)
 #TODO - Verify insulin effect at insulin t=0 is correct
-#TODO - Figure out what causes load to fail on 2023-09-08 MDT around 22:00
 #TODO - Grey boluses at the original location so it's more obvious what has changed?
+#TODO - Remove duplicates instead of interpolating.  Note that this will affect the differential calculation used for ICE and IE
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
@@ -120,7 +120,8 @@ class BGInteractor:
         myBGs = entries_col.find({
             "$and": [
                 {"sysTime" : { "$gt" : timeStart.isoformat() }},
-                {"sysTime" : { "$lt" : timeStop.isoformat() }}
+                {"sysTime" : { "$lt" : timeStop.isoformat() }},
+                {"type" : "sgv"}
                 ]
             })
         myCarbs = treatments_col.find({
@@ -159,15 +160,15 @@ class BGInteractor:
         t0 = BG_times[0]
         self.x_BG_orig = np.array([t.total_seconds() for t in (BG_times-t0)])/60
         self.y_BG = BG_values.copy()
-        self.x_BG = np.arange(0,max(self.x_BG_orig),5) # TODO Remove duplicates instead of interpolating.  Note that this also affects the differential calculation used for ICE and IE
+        self.x_BG = np.arange(0,max(self.x_BG_orig),5)
         self.y_BG = np.interp(self.x_BG,self.x_BG_orig,self.y_BG)
 
-        #load initial carbs (this will remain fixed)
+        # load initial carbs (this will remain fixed)
         self.x_carb = np.array([t.total_seconds() for t in (carb_times-t0)])/60
         self.y_carb = 0*carb_values + 100  # for initialization only
         self.z_carb = carb_values.copy() # carb amounts (grams)
 
-        #load initial bolus insulin (these can be dragged)
+        # load initial bolus insulin (these can be dragged)
         self.x_bolus = np.array([t.total_seconds() for t in (bolus_times-t0)])/60
         self.y_bolus = 0*bolus_values + 100 # for initialization only
         self.z_bolus = bolus_values.copy() # insulin amount (Units)
@@ -226,7 +227,6 @@ class BGInteractor:
         #self.sc_ICE = self.ax.plot(self.x_BG[1:],self.y_ICE,color="orange", zorder=.1)
 
         self.ax.xaxis.set_major_locator(MultipleLocator(60))
-
 
     def connect_handlers(self):
         self.canvas.mpl_connect('button_press_event', self.on_button_press)
