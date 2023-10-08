@@ -12,7 +12,7 @@ Insulin boluses are displayed as green markers.  Insulin amounts and timing can 
 3. **Insert** by pressing  _'i'_  with the pointer at the location to insert an insulin bolus.  The size of the inserted bolus is set in the "Bolus to Insert (U)" field.
 4. (Advanced) Delete and **Accumulate** insulin by pressing  _'a'_  over an insulin bolus.  Insulin accumulated in this way will populate the "Bolus to Insert (U)" field for later insertion.  This is particularly helpful to combine many small boluses into a single bolus for easier manipulation.
 
-The orange and green lines show the insulin effect and insulin counteraction effects.  This slider on the right adjusts the ISF used to compute these effects from the BG and insulin data.
+The orange and green lines show the insulin effect and insulin counteraction effects.  The slider on the right adjusts the ISF used to compute these effects from the BG and insulin data.
 
 The MongoDB URI is currently set in TinkerBolus.py if you'd like to use a URI other than the deault test URI provided.
 
