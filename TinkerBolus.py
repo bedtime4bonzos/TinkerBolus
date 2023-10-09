@@ -23,6 +23,7 @@ from scipy.ndimage import uniform_filter1d
 #TODO - Verify insulin effect at insulin t=0 is correct
 #TODO - Grey boluses at the original location so it's more obvious what has changed?
 #TODO - Remove duplicates instead of interpolating.  Note that this will affect the differential calculation used for ICE and IE
+#TODO - Incorporate basal profiles
 
 class BGInteractor:
     epsilon = 25  # max pixel distance to count as a vertex hit
